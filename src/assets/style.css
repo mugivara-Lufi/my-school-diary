@@ -1,0 +1,128 @@
+/* src/assets/style.css */
+
+/* Сброс базовых отступов */
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden; /* allow vertical scrolling, prevent horizontal overflow */
+  font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Общий контейнер для страниц с боковой картинкой */
+.auth-page {
+    display: flex;
+    height: 100vh;
+    background-color: #fff;
+}
+
+/* Левая часть с контентом */
+.content-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 60px;
+    max-width: 50%;
+    box-sizing: border-box;
+}
+
+/* Правая часть с картинкой школы */
+.image-panel {
+    flex: 1.2;
+    background: url('./image/school-bg.jpg') no-repeat center center;
+    background-size: cover;
+    height: 100vh;
+}
+
+/* Логотип */
+.login-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 60px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #6C757D;
+}
+
+/* Карточки детей и формы */
+.main-container {
+    max-width: 400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.page-title {
+    font-size: 26px;
+    font-weight: 600;
+    color: #5A6679;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+/* Кнопки */
+.btn-custom {
+    width: 100%;
+    padding: 15px;
+    border-radius: 30px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: 0.3s;
+}
+
+.btn-blue {
+    background-color: #5A8DEE;
+    color: white;
+}
+
+.btn-blue:hover {
+    background-color: #4A7CDE;
+}
+
+@media (max-width: 768px) {
+  .login-page {
+    flex-direction: column;
+  }
+  .login-panel {
+    border-right: none;
+    padding: 30px;
+    max-width: 100%;
+  }
+  .image-panel {
+    display: none; /* Скрываем картинку на маленьких экранах */
+  }
+  .login-header {
+    margin-bottom: 40px;
+  }
+}
+
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background-color: #5A8DEE;
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px 0 4px 0; /* Форма ромба/листа */
+  margin-right: 10px;
+  transform: skew(-10deg); /* Небольшой наклон как на скриншоте */
+}
+
+.logo-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #6C757D;
+}

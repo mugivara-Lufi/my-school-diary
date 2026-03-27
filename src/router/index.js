@@ -14,6 +14,17 @@ const routes = [
   { 
     path: '/performance/:id', 
     component: () => import('../views/PerformanceView.vue') 
+  },
+  {
+  path: '/journal/:id',
+  name: 'Journal',
+  component: () => import('../views/JournalView.vue')
+  },
+  {
+    // Добавляем этот путь
+    path: '/schedule/:id',
+    name: 'Schedule',
+    component: () => import('../views/Schedule.vue')
   }
 ]
 

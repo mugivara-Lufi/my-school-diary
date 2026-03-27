@@ -1,70 +1,112 @@
 <template>
   <div class="page-wrapper">
     <TheHeader 
+      v-if="profileName"
       :userName="profileName" 
       :studentId="route.params.id" 
     />
 
     <div class="performance-container">
-      <div class="page-header">
-        <div class="title-group">
-          <h1>Успеваемость</h1>
-          <div class="select-wrapper">
+      <header class="view-header">
+        <div class="header-main">
+          <h1 class="page-title">Успеваемость</h1>
+          <div class="quarter-selector">
             <select v-model="selectedQuarter">
-              <option value="1">1 четверть (текущая)</option>
-              <option value="2">2 четверть</option>
+              <option value="1">I четверть</option>
+              <option value="2">II четверть</option>
+              <option value="3">III четверть</option>
+              <option value="4">IV четверть</option>
             </select>
           </div>
         </div>
-        <button class="btn-journal">Открыть журнал</button>
-      </div>
+        <button class="btn-primary-outline" @click="openJournal">Открыть журнал</button>
+      </header>
 
-      <div class="table-controls">
-        <div class="goal-setter">
-          <span class="label">Задать цели</span>
-          <div class="goal-buttons">
-            <button :class="{ active: globalGoal === 5 }" @click="setGlobalGoal(5)">5</button>
-            <button :class="{ active: globalGoal === 4 }" @click="setGlobalGoal(4)">4</button>
+      <section class="tools-panel">
+        <div class="tool-group">
+          <span class="tool-label">Целевой балл</span>
+          <div class="goal-switcher">
+            <button 
+              v-for="val in [4, 5]" 
+              :key="val"
+              :class="{ active: globalGoal === val }" 
+              @click="setGlobalGoal(val)"
+            >
+              На {{ val }}
+            </button>
           </div>
         </div>
 
-        <div class="sort-wrapper">
-          <span class="label">Упорядочить</span>
-          <select v-model="sortBy">
-            <option value="default">по умолчанию</option>
-            <option value="grade">по баллу</option>
-          </select>
+        <div class="tool-group">
+          <span class="tool-label">Сортировка</span>
+          <div class="sort-select">
+            <select v-model="sortBy">
+              <option value="default">По умолчанию</option>
+              <option value="grade">По высокому баллу</option>
+            </select>
+          </div>
         </div>
-      </div>
+      </section>
 
       <div class="performance-card">
-        <div v-if="loading" class="loading-text">Загрузка данных...</div>
-        <table v-else class="performance-table">
+        <div v-if="loading" class="loading-state">
+          <div class="spinner"></div>
+          <p>Загрузка оценок...</p>
+        </div>
+
+        <table v-else class="modern-table">
           <thead>
             <tr>
               <th>Предмет</th>
-              <th>Последние оценки</th>
-              <th>Посещаемость</th>
+              <th>Текущие оценки</th>
+              <th>Пропуски</th>
               <th>Средний балл</th>
               <th class="text-center">Цель</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in performanceData" :key="item.subjectName">
-              <td class="subject-column">{{ item.subjectName }}</td>
-              <td class="grades-column">
-                <span v-for="(grade, idx) in item.grades" :key="idx" class="grade-item" :class="getGradeClass(grade)">
-                  {{ grade }}
+            <tr v-for="item in sortedPerformance" :key="item.subjectName" class="table-row">
+              <td class="subject-cell">
+                <span class="subject-name">{{ item.subjectName }}</span>
+              </td>
+              
+              <td class="grades-cell">
+                <div class="grades-wrap">
+                  <span 
+                    v-for="(grade, idx) in item.grades" 
+                    :key="idx" 
+                    class="grade-badge" 
+                    :class="getGradeClass(grade)"
+                  >
+                    {{ grade }}
+                  </span>
+                  <span v-if="!item.grades.length" class="empty-dash">—</span>
+                </div>
+              </td>
+
+              <td class="attendance-cell">
+                <span :class="{ 'has-absent': item.attendance > 0 }">
+                  {{ item.attendance || 'Нет' }}
                 </span>
-                <span v-if="!item.grades.length" class="no-grades">—</span>
               </td>
-              <td class="attendance-column">{{ item.attendance }}</td>
-              <td class="avg-column">
-                <span class="avg-value">{{ item.averageGrade.toFixed(2) }}</span>
-                <div v-if="item.showWarning" class="warning-badge" title="Спорная оценка">!</div>
+
+              <td class="avg-cell">
+                <div class="avg-container">
+                  <span class="avg-number">{{ item.averageGrade.toFixed(2) }}</span>
+                  <div class="avg-indicator">
+                    <div class="avg-bar-bg">
+                      <div class="avg-bar-fill" :class="getGradeClass(Math.round(item.averageGrade))"
+                           :style="{ width: (item.averageGrade / 5 * 100) + '%' }"></div>
+                    </div>
+                  </div>
+                  <div v-if="item.showWarning" class="warning-icon" title="Спорная оценка">!</div>
+                </div>
               </td>
-              <td class="goal-column">
-                <div class="goal-box">{{ item.goalGrade }}</div>
+
+              <td class="goal-cell">
+                <div class="goal-target" :class="{ 'reached': item.averageGrade >= item.goalGrade }">
+                  {{ item.goalGrade }}
+                </div>
               </td>
             </tr>
           </tbody>
@@ -75,32 +117,33 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, onMounted, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
-import TheHeader from '../components/TheHeader.vue'; // Импорт шапки
+import TheHeader from '../components/TheHeader.vue';
 
+const router = useRouter();
 const route = useRoute();
 const performanceData = ref([]);
-const profileName = ref(""); // Для отображения имени в шапке
+const profileName = ref("");
 const loading = ref(true);
 const selectedQuarter = ref("1");
 const globalGoal = ref(5);
 const sortBy = ref("default");
 
+const openJournal = () => {
+  router.push(`/journal/${route.params.id}`);
+};
 const fetchData = async () => {
   loading.value = true;
   const studentId = route.params.id;
   try {
-    // Загружаем оба запроса параллельно вместо последовательно
     const [perfResponse, profileResponse] = await Promise.all([
       axios.get(`https://localhost:7081/api/Grades/performance/${studentId}`),
       axios.get(`https://localhost:7081/api/Profile/${studentId}`)
     ]);
-
-    performanceData.value = [...perfResponse.data];
+    performanceData.value = perfResponse.data;
     profileName.value = profileResponse.data.student.fullName;
-
   } catch (error) {
     console.error("Ошибка при загрузке данных:", error);
   } finally {
@@ -108,15 +151,23 @@ const fetchData = async () => {
   }
 };
 
+const sortedPerformance = computed(() => {
+  const data = [...performanceData.value];
+  if (sortBy.value === 'grade') {
+    return data.sort((a, b) => b.averageGrade - a.averageGrade);
+  }
+  return data;
+});
+
 const setGlobalGoal = (val) => {
   globalGoal.value = val;
   performanceData.value.forEach(item => item.goalGrade = val);
 };
 
 const getGradeClass = (grade) => {
-  if (grade === 5) return 'grade-5';
-  if (grade === 4) return 'grade-4';
-  if (grade <= 3) return 'grade-3';
+  if (grade >= 4.5 || grade === 5) return 'grade-5';
+  if (grade >= 3.5 || grade === 4) return 'grade-4';
+  if (grade > 0) return 'grade-3';
   return '';
 };
 
@@ -124,168 +175,270 @@ onMounted(fetchData);
 </script>
 
 <style scoped>
-/* Общая обертка для фона и скролла */
 .page-wrapper {
   min-height: 100vh;
-  background-color: #F8FAFC;
+  background-color: #F4F7FE; /* Тот же фон, что в профиле */
+  font-family: 'Inter', sans-serif;
+  color: #2B3674;
 }
 
 .performance-container {
-  padding: 40px 30px;
-  max-width: 1240px;
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 40px 20px;
 }
 
-.loading-text {
-  padding: 40px;
-  text-align: center;
-  color: #94a3b8;
-}
-
-/* Шапка страницы (внутренняя) */
-.page-header {
+/* HEADER СТИЛИ */
+.view-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
-.title-group {
+.header-main {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 25px;
 }
 
-.title-group h1 {
-  font-size: 28px;
-  color: #8E9DB0; /* Цвет как в профиле */
-  font-weight: 500;
+.page-title {
+  font-size: 30px;
+  font-weight: 800;
+  color: #2B3674;
+  margin: 0;
 }
 
-/* Контролы */
-.table-controls {
-  display: flex;
-  gap: 40px;
-  margin-bottom: 25px;
-  align-items: center;
-}
-
-.label {
-  color: #cbd5e1;
-  font-size: 14px;
-}
-
-.select-wrapper select {
-  padding: 8px 15px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+.quarter-selector select {
   background: white;
-  color: #94a3b8;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 12px;
+  font-weight: 600;
+  color: #707EAE;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
   outline: none;
 }
 
-.btn-journal {
-  padding: 10px 25px;
-  border: 1px solid #cbd5e1;
-  border-radius: 25px;
+.btn-primary-outline {
   background: transparent;
-  color: #94a3b8;
+  border: 2px solid #4318FF;
+  color: #4318FF;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.goal-buttons button {
-  width: 35px;
-  height: 35px;
-  border: 1px solid #e2e8f0;
+.btn-primary-outline:hover {
+  background: #4318FF;
+  color: white;
+}
+
+/* ПАНЕЛЬ ИНСТРУМЕНТОВ */
+.tools-panel {
+  display: flex;
+  gap: 30px;
   background: white;
-  border-radius: 6px;
-  color: #94a3b8;
+  padding: 20px 25px;
+  border-radius: 20px;
+  margin-bottom: 25px;
+  box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.06);
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.tool-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #A3AED0;
+}
+
+.goal-switcher {
+  display: flex;
+  background: #F4F7FE;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.goal-switcher button {
+  border: none;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  color: #707EAE;
+  background: transparent;
   cursor: pointer;
-  margin-right: 8px;
 }
 
-.goal-buttons button.active {
-  border-color: #4C6FFF;
-  color: #4C6FFF;
-  font-weight: bold;
+.goal-switcher button.active {
+  background: white;
+  color: #4318FF;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-/* Таблица */
+.sort-select select {
+  border: none;
+  background: #F4F7FE;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  color: #2B3674;
+}
+
+/* ТАБЛИЦА */
 .performance-card {
   background: white;
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(112, 144, 176, 0.08);
+  box-shadow: 0px 18px 40px rgba(112, 144, 176, 0.06);
   overflow: hidden;
 }
 
-.performance-table {
+.modern-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.performance-table th {
+.modern-table th {
+  background: #FAFCFE;
+  padding: 16px 24px;
   text-align: left;
-  padding: 20px;
-  color: #cbd5e1;
-  font-weight: 500;
   font-size: 13px;
-  border-bottom: 1px solid #f8fafc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #A3AED0;
+  border-bottom: 1px solid #E9EDF7;
 }
 
-.performance-table td {
-  padding: 20px;
-  border-bottom: 1px solid #f8fafc;
-  color: #64748b;
+.table-row {
+  transition: background 0.2s;
 }
 
-.subject-column {
-  color: #8e9db0;
-  width: 25%;
+.table-row:hover {
+  background: #F9FAFF;
 }
 
-.grade-item {
-  margin-right: 12px;
-  font-weight: 600;
+.modern-table td {
+  padding: 18px 24px;
+  border-bottom: 1px solid #E9EDF7;
 }
 
-/* Цвета оценок */
-.grade-5 { color: #4CD964; }
-.grade-4 { color: #4C6FFF; }
-.grade-3 { color: #FF9500; }
-
-.avg-value {
+.subject-name {
   font-weight: 700;
-  color: #4A5568;
+  font-size: 16px;
+  color: #2B3674;
 }
 
-.no-grades { color: #cbd5e1; }
+/* ОЦЕНКИ-ЧИПСЫ */
+.grades-wrap {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
-.warning-badge {
-  display: inline-flex;
-  width: 20px;
-  height: 20px;
-  background: #fff5f5;
-  color: #ff5c5c;
-  border: 1px solid #ff5c5c;
-  border-radius: 50%;
-  font-size: 12px;
+.grade-badge {
+  width: 32px;
+  height: 32px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 14px;
 }
 
-.goal-box {
-  width: 40px;
-  height: 40px;
-  border: 2px solid #f1f5f9;
+.grade-5 { background: #E6FFF5; color: #05CD99; }
+.grade-4 { background: #EFF4FF; color: #4318FF; }
+.grade-3 { background: #FFF7E6; color: #FFB547; }
+
+/* СРЕДНИЙ БАЛЛ И ИНДИКАТОР */
+.avg-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.avg-number {
+  font-size: 18px;
+  font-weight: 800;
+  min-width: 40px;
+}
+
+.avg-indicator {
+  width: 80px;
+}
+
+.avg-bar-bg {
+  height: 6px;
+  background: #F4F7FE;
   border-radius: 10px;
+  overflow: hidden;
+}
+
+.avg-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+}
+
+.avg-bar-fill.grade-5 { background: #05CD99; }
+.avg-bar-fill.grade-4 { background: #4318FF; }
+.avg-bar-fill.grade-3 { background: #FFB547; }
+
+.warning-icon {
+  width: 18px;
+  height: 18px;
+  background: #EE5D50;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
+/* ЦЕЛЬ */
+.goal-target {
+  width: 42px;
+  height: 42px;
+  border: 2px dashed #E0E5F2;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto;
-  color: #4C6FFF;
-  font-weight: 700;
+  font-weight: 800;
+  color: #A3AED0;
 }
 
-.text-center { text-align: center; }
+.goal-target.reached {
+  border-style: solid;
+  border-color: #4318FF;
+  background: #F4F7FE;
+  color: #4318FF;
+}
+
+/* ЗАГРУЗКА */
+.loading-state {
+  padding: 60px;
+  text-align: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #F4F7FE;
+  border-top-color: #4318FF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 15px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

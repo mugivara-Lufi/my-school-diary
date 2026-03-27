@@ -1,148 +1,3 @@
-<template>
-  <div class="page-wrapper">
-    <TheHeader 
-      v-if="profileData" 
-      :userName="profileData.student.fullName" 
-      :studentId="route.params.id" 
-    />
-
-    <div class="dashboard-container">
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>Загрузка данных профиля...</p>
-      </div>
-
-      <main v-else-if="profileData" class="content-area">
-        <h1 class="page-header">Достижения и рейтинг</h1>
-
-        <div class="grid-top-row">
-          <section class="card badges-card">
-            <div class="card-header">
-              <div class="header-left-col">
-                <h3>Значки</h3>
-                <span class="sub-label">Получено {{ unlockedCount }} из 20</span>
-              </div>
-              <button class="link-btn" @click="showAllBadges = !showAllBadges">
-                {{ showAllBadges ? 'Скрыть' : 'Показать все' }}
-              </button>
-            </div>
-
-            <div class="badges-wrapper" :class="{ 'expanded': showAllBadges }">
-              <div v-for="badge in visibleBadges" :key="badge.id" class="badge-element"
-                :class="{ 'locked': !badge.isUnlocked, [badge.iconColor]: badge.isUnlocked }">
-                <div class="diamond-shape">
-                  <div class="diamond-content">
-                    <span class="b-icon" v-if="badge.isUnlocked">🏆</span>
-                    <span class="b-icon" v-else>🔒</span>
-                    <span class="b-text" v-if="badge.isUnlocked">{{ badge.title.includes('%') ? badge.title : '5' }}</span>
-                  </div>
-                </div>
-                <span class="badge-name">{{ badge.title }}</span>
-              </div>
-            </div>
-          </section>
-
-          <section class="card certificates-card">
-            <div class="card-header">
-              <h3>Грамоты</h3>
-            </div>
-            <div class="cert-slider">
-              <button class="nav-arrow left">‹</button>
-              <div class="cert-display">
-                <div v-for="cert in profileData.certificates.slice(0, 3)" :key="cert.id" class="cert-item">
-                  <div class="cert-frame">
-                    <img src="https://via.placeholder.com/100x140?text=Diploma" alt="Грамота" class="cert-img">
-                  </div>
-                  <div class="cert-info">
-                    <div class="cert-subj">{{ cert.achievementType }}</div>
-                    <div class="cert-date">{{ new Date(cert.date).toLocaleDateString('ru-RU') }}</div>
-                  </div>
-                </div>
-              </div>
-              <button class="nav-arrow right">›</button>
-            </div>
-          </section>
-        </div>
-
-        <section class="card rating-main-card">
-          <div class="card-header">
-            <h3>Рейтинг в классе</h3>
-            <span class="filter-dropdown">За неделю ⌄</span>
-          </div>
-
-          <div class="rating-body">
-            <div class="stat-block">
-              <span class="label">Место в классе</span>
-              <div class="value-row">
-                <span class="big-num">{{ profileData.stats.place }}</span>
-                <span class="trend-icon up">▲</span>
-              </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <div class="stat-block wide">
-              <span class="label">Средний балл</span>
-              <div class="value-row">
-                <span class="big-num">{{ profileData.stats.averageGrade.toFixed(2) }}</span>
-                <span class="trend-text up">+0,18</span>
-              </div>
-              <div class="mini-progress">
-                <div class="bg-bar">
-                  <div class="fill-bar" :style="{ width: (profileData.stats.averageGrade / 5 * 100) + '%' }"></div>
-                </div>
-                <div class="scale-nums"><span>5</span><span>4</span><span>3</span></div>
-              </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <div class="stat-block graph-block">
-              <span class="label">Изменение среднего балла</span>
-              <div class="chart-container">
-                <span class="y-axis-val top">4.45</span>
-                <svg viewBox="0 0 300 80" preserveAspectRatio="none">
-                  <polyline fill="none" stroke="#4CD964" stroke-width="3" stroke-linecap="round"
-                    stroke-linejoin="round" :points="calculateGraphPoints(profileData.stats.graphData)" />
-                  <circle v-for="(p, i) in getPointsArray(profileData.stats.graphData)" :key="i" :cx="p.x" :cy="p.y"
-                    r="4" fill="white" stroke="#4CD964" stroke-width="2" />
-                </svg>
-                <span class="y-axis-val bottom">4.25</span>
-              </div>
-              <div class="x-axis">
-                <span>2 сен</span><span>3 сен</span><span>4 сен</span><span>5 сен</span><span>6 сен</span><span>7 сен</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="card parallel-card">
-          <div class="card-header">
-            <h3>Рейтинг параллели по среднему баллу</h3>
-          </div>
-          <div class="parallel-grid">
-            <div v-for="(cls, idx) in profileData.parallelRating" :key="idx" class="parallel-col">
-              <span class="cls-title">{{ cls.name }}</span>
-              <div class="cls-val-row">
-                <span class="cls-num">{{ cls.avg }}</span>
-                <span class="cls-trend" :class="cls.trend.includes('-') ? 'down' : 'up'">
-                  {{ cls.trend.includes('-') ? '▼' : '▲' }} {{ cls.trend }}
-                </span>
-              </div>
-              <div class="cls-progress">
-                <div class="cls-fill" :class="cls.trend.includes('-') ? 'bg-red' : 'bg-green'"
-                  :style="{ width: (cls.avg / 5 * 100) + '%' }"></div>
-              </div>
-              <div class="scale-min"><span>5</span><span>4</span><span>3</span><span>2</span></div>
-              <span v-if="cls.name === '10 А'" class="my-class-badge">Мой класс</span>
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
@@ -157,10 +12,10 @@ const showAllBadges = ref(false)
 // Расчет количества открытых значков
 const unlockedCount = computed(() => profileData.value?.badges.filter(b => b.isUnlocked).length || 0)
 
-// Список видимых значков (4 или все)
+// Список видимых значков
 const visibleBadges = computed(() => {
   if (!profileData.value) return []
-  return showAllBadges.value ? profileData.value.badges : profileData.value.badges.slice(0, 4)
+  return showAllBadges.value ? profileData.value.badges : profileData.value.badges.slice(0, 5)
 })
 
 // Загрузка данных
@@ -176,90 +31,274 @@ onMounted(async () => {
   }
 })
 
-// Логика отрисовки графика
+// Логика отрисовки графика (улучшенная)
 const getPointsArray = (grades) => {
   if (!grades || grades.length < 2) return []
-  const step = 300 / (grades.length - 1)
-  // Масштабируем: 5 баллов вверху (y=10), 3 балла внизу (y=70)
-  return grades.map((g, i) => ({ x: i * step, y: 80 - ((g - 3) * 30) })) 
+  const width = 300
+  const height = 80
+  const step = width / (grades.length - 1)
+  
+  // Масштабируем: 5 баллов = верх (5px), 2 балла = низ (75px)
+  return grades.map((g, i) => ({ 
+    x: i * step, 
+    y: height - ((g - 2) * (height / 3)) - 10 
+  })) 
 }
 
 const calculateGraphPoints = (grades) => getPointsArray(grades).map(p => `${p.x},${p.y}`).join(' ')
+
+// Для заливки под графиком
+const calculateAreaPoints = (grades) => {
+  const points = getPointsArray(grades)
+  if (points.length === 0) return ""
+  return `${points[0].x},80 ` + points.map(p => `${p.x},${p.y}`).join(' ') + ` ${points[points.length-1].x},80`
+}
 </script>
 
+<template>
+  <div class="page-wrapper">
+    <TheHeader 
+      v-if="profileData" 
+      :userName="profileData.student.fullName" 
+      :studentId="route.params.id" 
+    />
+
+    <div class="dashboard-container">
+      <div v-if="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Синхронизация с базой данных...</p>
+      </div>
+
+      <main v-else-if="profileData" class="content-area">
+        <div class="welcome-section">
+          <h1 class="page-header">Профиль ученика</h1>
+          <span class="class-tag">{{ profileData.student.className }}</span>
+        </div>
+
+        <div class="grid-top-row">
+          <section class="card badges-card">
+            <div class="card-header">
+              <div class="header-left-col">
+                <h3>Достижения</h3>
+                <span class="sub-label">Собрано {{ unlockedCount }} из {{ profileData.badges.length }}</span>
+              </div>
+              <button class="link-btn" @click="showAllBadges = !showAllBadges">
+                {{ showAllBadges ? 'Свернуть' : 'Все награды' }}
+              </button>
+            </div>
+
+            <div class="badges-wrapper" :class="{ 'expanded': showAllBadges }">
+              <div v-for="badge in visibleBadges" :key="badge.id" class="badge-element"
+                :class="{ 'locked': !badge.isUnlocked, [badge.iconColor]: badge.isUnlocked }">
+                <div class="diamond-shape">
+                  <div class="diamond-content">
+                    <span class="b-icon">{{ badge.isUnlocked ? '🏆' : '🔒' }}</span>
+                  </div>
+                </div>
+                <span class="badge-name">{{ badge.title }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="card certificates-card">
+            <div class="card-header">
+              <h3>Портфолио</h3>
+              <span class="sub-label">Последние документы</span>
+            </div>
+            <div class="cert-display">
+              <div v-for="cert in profileData.certificates.slice(0, 2)" :key="cert.id" class="cert-item">
+                <div class="cert-icon">📄</div>
+                <div class="cert-info">
+                  <div class="cert-subj">{{ cert.achievementType }}</div>
+                  <div class="cert-date">{{ new Date(cert.date).toLocaleDateString('ru-RU') }}</div>
+                </div>
+              </div>
+              <div v-if="profileData.certificates.length === 0" class="empty-certs">Пока нет грамот</div>
+            </div>
+          </section>
+        </div>
+
+        <section class="card rating-main-card">
+          <div class="rating-grid">
+            <div class="stat-block">
+              <span class="label">Место в классе</span>
+              <div class="value-row">
+                <span class="big-num">{{ profileData.stats.place }}</span>
+                <span class="total-count">/{{ profileData.stats.totalStudents }}</span>
+              </div>
+              <div class="trend up">▲ На этой неделе</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="stat-block wide">
+              <span class="label">Средний балл</span>
+              <div class="value-row">
+                <span class="big-num">{{ profileData.stats.averageGrade.toFixed(2) }}</span>
+              </div>
+              <div class="mini-progress">
+                <div class="bg-bar">
+                  <div class="fill-bar" :style="{ width: (profileData.stats.averageGrade / 5 * 100) + '%' }"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="stat-block graph-block">
+              <span class="label">Динамика успеваемости</span>
+              <div class="chart-container">
+                <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="main-svg">
+                  <polyline fill="rgba(76, 111, 255, 0.1)" :points="calculateAreaPoints(profileData.stats.graphData)" />
+                  <polyline fill="none" stroke="#4C6FFF" stroke-width="3" stroke-linecap="round"
+                    stroke-linejoin="round" :points="calculateGraphPoints(profileData.stats.graphData)" />
+                  <circle v-for="(p, i) in getPointsArray(profileData.stats.graphData)" :key="i" :cx="p.x" :cy="p.y"
+                    r="4" fill="white" stroke="#4C6FFF" stroke-width="2" />
+                </svg>
+              </div>
+              <div class="x-axis">
+                <span>Пн</span><span>Ср</span><span>Пт</span><span>Вс</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card parallel-card">
+          <div class="card-header">
+            <h3>Лидеры параллели</h3>
+          </div>
+          <div class="parallel-grid">
+            <div v-for="(cls, idx) in profileData.parallelRating" :key="idx" class="parallel-col" :class="{ 'is-mine': cls.name.includes('А') }">
+              <div class="cls-header">
+                <span class="cls-title">{{ cls.name }}</span>
+                <span class="cls-avg">{{ cls.avg }}</span>
+              </div>
+              <div class="cls-progress">
+                <div class="cls-fill" :class="cls.trend.includes('-') ? 'bg-red' : 'bg-green'"
+                  :style="{ width: (cls.avg / 5 * 100) + '%' }"></div>
+              </div>
+              <span class="cls-trend" :class="cls.trend.includes('-') ? 'down' : 'up'">
+                {{ cls.trend.includes('-') ? '▼' : '▲' }} {{ cls.trend }}
+              </span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</template>
+
 <style scoped>
+/* ОБЩИЕ СТИЛИ */
 .page-wrapper {
   min-height: 100vh;
-  background-color: #F8FAFC;
-  overflow-y: auto;
+  background-color: #F0F2F5;
+  color: #2D3748;
+  font-family: 'Inter', sans-serif;
 }
 
 .dashboard-container {
-  max-width: 1240px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 30px;
+  padding: 30px 20px;
 }
 
-.loading-state {
-  text-align: center;
-  padding: 100px;
-  color: #A0AEC0;
+.welcome-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 30px;
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #4C6FFF;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 20px;
+.page-header { font-size: 28px; font-weight: 800; color: #1A202C; margin: 0; }
+.class-tag { background: #4C6FFF; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+
+.card {
+  background: white;
+  border-radius: 24px;
+  padding: 25px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0,0,0,0.02);
+  margin-bottom: 25px;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* СЕТКА */
+.grid-top-row { display: grid; grid-template-columns: 1.8fr 1fr; gap: 25px; }
+
+/* ЗНАЧКИ (АЛМАЗЫ) */
+.badges-wrapper {
+  display: flex;
+  gap: 25px;
+  flex-wrap: wrap;
+  margin-top: 10px;
 }
 
-/* Остальные стили карточек из твоего кода без изменений */
-.page-header { font-size: 26px; color: #8E9DB0; font-weight: 500; margin-bottom: 30px; }
-.card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(112, 144, 176, 0.08); margin-bottom: 25px; }
-.card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 25px; }
-.card-header h3 { font-size: 18px; font-weight: 600; color: #8E9DB0; margin: 0; }
-.sub-label { display: block; font-size: 13px; color: #CBD5E0; margin-top: 4px; }
-.link-btn { background: none; border: none; color: #4C6FFF; cursor: pointer; font-size: 13px; }
+.diamond-shape {
+  width: 60px;
+  height: 60px;
+  background: #EDF2F7;
+  transform: rotate(45deg);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
 
-.grid-top-row { display: grid; grid-template-columns: 1fr 1.6fr; gap: 25px; }
+.diamond-content { transform: rotate(-45deg); font-size: 22px; }
+.badge-element { display: flex; flex-direction: column; align-items: center; width: 85px; gap: 15px; }
+.badge-name { font-size: 11px; font-weight: 600; color: #718096; text-align: center; line-height: 1.2; }
 
-/* Значки */
-.badges-wrapper { display: flex; justify-content: flex-start; gap: 20px; flex-wrap: wrap; }
-.badge-element { display: flex; flex-direction: column; align-items: center; width: 80px; }
-.diamond-shape { width: 55px; height: 55px; transform: rotate(45deg); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; }
-.diamond-content { transform: rotate(-45deg); text-align: center; }
-.locked .diamond-shape { background: #EDF2F7; }
-.gold .diamond-shape { background: linear-gradient(135deg, #F6AD55, #ED8936); }
-.purple .diamond-shape { background: linear-gradient(135deg, #B794F4, #805AD5); }
-.blue .diamond-shape { background: linear-gradient(135deg, #63B3ED, #4299E1); }
-.b-text { color: white; font-weight: bold; font-size: 14px; }
-.badge-name { font-size: 11px; color: #A0AEC0; text-align: center; }
+/* Цвета значков */
+.gold .diamond-shape { background: linear-gradient(135deg, #F6AD55, #ED8936); box-shadow: 0 5px 15px rgba(237, 137, 54, 0.3); }
+.blue .diamond-shape { background: linear-gradient(135deg, #63B3ED, #4299E1); box-shadow: 0 5px 15px rgba(66, 153, 225, 0.3); }
+.purple .diamond-shape { background: linear-gradient(135deg, #B794F4, #805AD5); box-shadow: 0 5px 15px rgba(128, 90, 213, 0.3); }
 
-/* Рейтинг */
-.rating-body { display: flex; align-items: center; justify-content: space-between; }
-.divider { width: 1px; height: 80px; background: #EDF2F7; margin: 0 30px; }
-.big-num { font-size: 56px; font-weight: 700; color: #4A5568; }
-.label { font-size: 14px; color: #CBD5E0; margin-bottom: 5px; }
-.mini-progress { margin-top: 10px; }
-.bg-bar { height: 6px; background: #EDF2F7; border-radius: 3px; position: relative; }
-.fill-bar { height: 100%; background: #4CD964; border-radius: 3px; }
-.scale-nums { display: flex; justify-content: space-between; font-size: 10px; color: #CBD5E0; margin-top: 4px; }
+/* ГРАМОТЫ */
+.cert-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px;
+  background: #F7FAFC;
+  border-radius: 16px;
+  margin-bottom: 10px;
+}
+.cert-icon { font-size: 24px; }
+.cert-subj { font-weight: 700; font-size: 14px; }
+.cert-date { font-size: 12px; color: #A0AEC0; }
 
-/* Графики и параллели */
-.chart-container { height: 80px; position: relative; margin: 10px 0; }
-.x-axis { display: flex; justify-content: space-between; font-size: 10px; color: #CBD5E0; }
-.parallel-grid { display: flex; justify-content: space-between; gap: 20px; }
-.parallel-col { flex: 1; text-align: center; }
-.cls-num { font-size: 32px; font-weight: 700; color: #4A5568; }
-.cls-progress { height: 6px; background: #EDF2F7; border-radius: 3px; margin: 10px 0; overflow: hidden; }
-.bg-green { background: #4CD964; }
-.bg-red { background: #FF3B30; }
+/* РЕЙТИНГОВАЯ ПАНЕЛЬ */
+.rating-grid { display: flex; align-items: center; justify-content: space-around; }
+.stat-block { flex: 1; padding: 0 10px; }
+.big-num { font-size: 48px; font-weight: 800; color: #1A202C; }
+.total-count { font-size: 20px; color: #A0AEC0; font-weight: 600; }
+.label { font-size: 13px; font-weight: 700; color: #A0AEC0; text-transform: uppercase; letter-spacing: 0.5px; }
+.divider { width: 1px; height: 70px; background: #E2E8F0; margin: 0 20px; }
+
+/* ГРАФИК */
+.chart-container { height: 80px; margin: 15px 0 10px; }
+.main-svg { overflow: visible; width: 100%; height: 100%; }
+.x-axis { display: flex; justify-content: space-between; font-size: 11px; color: #CBD5E0; font-weight: 600; }
+
+/* ПАРАЛЛЕЛИ */
+.parallel-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.parallel-col { background: #F8FAFC; padding: 15px; border-radius: 18px; transition: transform 0.2s; }
+.parallel-col.is-mine { background: #EBF4FF; border: 1px solid #BEE3F8; transform: scale(1.05); }
+.cls-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.cls-title { font-weight: 700; }
+.cls-avg { font-weight: 800; color: #4C6FFF; }
+.cls-progress { height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+.cls-fill { height: 100%; transition: width 1s ease-out; }
+.bg-green { background: #48BB78; }
+.bg-red { background: #F56565; }
+.cls-trend { font-size: 11px; font-weight: 700; }
+.up { color: #48BB78; }
+.down { color: #F56565; }
+
+/* ЗАГРУЗКА */
+.spinner { width: 40px; height: 40px; border: 4px solid #EDF2F7; border-top-color: #4C6FFF; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.link-btn { background: none; border: none; color: #4C6FFF; font-weight: 700; cursor: pointer; }
 </style>

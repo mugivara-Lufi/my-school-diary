@@ -9,7 +9,7 @@
 
     <div class="header-top">
       <nav class="main-menu">
-        <router-link to="/calendar" active-class="active">Календарь</router-link>
+        <router-link :to="'/schedule/' + studentId" active-class="active">Расписание</router-link>
         <router-link :to="'/performance/' + studentId" active-class="active">Успеваемость</router-link>
         <router-link to="/extra" active-class="active">Доп. обучение</router-link>
         <a href="#" class="dropdown-link">

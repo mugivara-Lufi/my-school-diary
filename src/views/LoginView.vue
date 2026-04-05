@@ -12,7 +12,7 @@ const router = useRouter() // 2. Инициализируем роутер
 const handleLogin = async () => {
   try {
     // ВАЖНО: Мы перешли на передачу данных через Body ([FromBody] в C#)
-    const url = 'https://localhost:7081/api/Auth/login'
+    const url = 'https://jdhfnmhb-7081.euw.devtunnels.ms/api/Auth/login'
     
     const response = await axios.post(url, {
       login: login.value,

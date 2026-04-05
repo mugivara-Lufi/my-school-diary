@@ -139,8 +139,8 @@ const fetchData = async () => {
   const studentId = route.params.id;
   try {
     const [perfResponse, profileResponse] = await Promise.all([
-      axios.get(`https://localhost:7081/api/Grades/performance/${studentId}`),
-      axios.get(`https://localhost:7081/api/Profile/${studentId}`)
+      axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Grades/performance/${studentId}`),
+      axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Profile/${studentId}`)
     ]);
     performanceData.value = perfResponse.data;
     profileName.value = profileResponse.data.student.fullName;

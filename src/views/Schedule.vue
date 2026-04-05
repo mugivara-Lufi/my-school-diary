@@ -91,8 +91,8 @@ const fetchData = async () => {
   
   try {
     const [scheduleRes, profileRes] = await Promise.all([
-      axios.get(`https://localhost:7081/api/Schedule/student/${studentId}?date=${dateStr}`),
-      axios.get(`https://localhost:7081/api/Profile/${studentId}`)
+      axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Schedule/student/${studentId}?date=${dateStr}`),
+      axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Profile/${studentId}`)
     ]);
 
     scheduleData.value = scheduleRes.data;

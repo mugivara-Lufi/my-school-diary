@@ -18,7 +18,7 @@ onMounted(async () => {
     }
 
     // Тот самый запрос, который ты проверял в Swagger
-    const response = await axios.get(`https://localhost:7081/api/Auth/children/${user.id}`)
+    const response = await axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Auth/children/${user.id}`)
     children.value = response.data
   } catch (error) {
     console.error("Ошибка при загрузке детей:", error)

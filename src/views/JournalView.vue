@@ -258,8 +258,8 @@ const fetchJournal = async () => {
 
 
         const [res, profileResponse] = await Promise.all([
-            axios.get(`https://localhost:7081/api/Grades/journal/${studentId}`),
-            axios.get(`https://localhost:7081/api/Profile/${studentId}`)
+            axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Grades/journal/${studentId}`),
+            axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Profile/${studentId}`)
         ]);
 
         journalData.value = [...res.data];

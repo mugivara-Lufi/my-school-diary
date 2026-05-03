@@ -512,12 +512,13 @@ onMounted(fetchJournal);
 }
 
 .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #F3F3F3;
-    border-top: 4px solid #4C6FFF;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+  width: 50px;
+  height: 50px;
+  border: 5px solid #E9EDF7;
+  border-top-color: #4318FF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
 }
 
 @keyframes spin {

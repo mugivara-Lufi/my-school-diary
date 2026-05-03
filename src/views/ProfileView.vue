@@ -243,13 +243,14 @@ const formatDate = (dateString) => {
     <div class="dashboard-container">
       <div v-if="loading" class="loading-state">
         <div class="spinner"></div>
-        <p>Синхронизация с базой данных...</p>
+        <p>Загрузка профиля...</p>
       </div>
 
       <main v-else-if="profileData" class="content-area">
         <div class="welcome-section">
           <h1 class="page-header">Профиль ученика</h1>
           <span class="class-tag">{{ profileData.student.className }}</span>
+          
         </div>
 
         <div class="grid-top-row">
@@ -424,6 +425,11 @@ const formatDate = (dateString) => {
 </template>
 
 <style scoped>
+.loading-state {
+  text-align: center;
+  padding: 100px 0;
+}
+
 .page-wrapper {
   min-height: 100vh;
   background: linear-gradient(135deg, #F0F2F5 0%, #E8ECF1 100%);
@@ -853,15 +859,14 @@ const formatDate = (dateString) => {
 }
 
 .spinner {
-  width: 45px;
-  height: 45px;
-  border: 4px solid #EDF2F7;
-  border-top-color: #4C6FFF;
+  width: 50px;
+  height: 50px;
+  border: 5px solid #E9EDF7;
+  border-top-color: #4318FF;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 1s linear infinite;
   margin: 0 auto 20px;
 }
-
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .link-btn {

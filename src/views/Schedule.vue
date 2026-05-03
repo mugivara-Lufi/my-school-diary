@@ -30,7 +30,7 @@
           <div class="lessons-list">
             <template v-for="lesson in getLessonsWithWindows(day.lessons)" :key="lesson.id || lesson.lessonNumber">
               
-              <div v-if="!lesson.isWindow" class="lesson-item">
+              <div v-if="!lesson.isWindow" class="lesson-item" @click="showLessonDetails(lesson)">
                 <div class="lesson-time">
                   <span class="start">{{ lesson.time.split(' - ')[0] }}</span>
                   <span class="end">{{ lesson.time.split(' - ')[1] }}</span>
@@ -42,8 +42,19 @@
                   </div>
                   <h4 class="subject-name">{{ lesson.subjectName }}</h4>
                   <p class="teacher-name"><span class="icon">👤</span> {{ lesson.teacherName }}</p>
-                  <div class="lesson-topic" v-if="lesson.topic">
-                    <strong>Тема:</strong> {{ lesson.topic }}
+                  
+                  <!-- Отображение оценки -->
+                  <div v-if="lesson.grade" class="lesson-grade" @click.stop="showGradeDetails(lesson.grade)">
+                    <span class="grade-badge" :class="getGradeClass(lesson.grade.gradeValue)">
+                      {{ lesson.grade.gradeValue }}
+                    </span>
+                    <span class="grade-type">{{ lesson.grade.type }}</span>
+                  </div>
+
+                  <!-- Отображение домашнего задания -->
+                  <div v-if="lesson.homework" class="lesson-homework" @click.stop="showHomeworkDetails(lesson.homework)">
+                    <span class="homework-icon">📚</span>
+                    <span class="homework-text">Домашнее задание</span>
                   </div>
                 </div>
               </div>
@@ -54,10 +65,94 @@
               </div>
 
             </template>
+
+            <!-- Отдельные домашние задания без привязки к уроку -->
+            <div v-for="homework in day.standaloneHomework" :key="homework.id" 
+                 class="standalone-homework" @click="showHomeworkDetails(homework)">
+              <div class="homework-time">📋</div>
+              <div class="homework-info">
+                <div class="homework-subject">{{ homework.subjectName }}</div>
+                <div class="homework-preview">{{ truncateText(homework.task, 50) }}</div>
+              </div>
+            </div>
           </div>
 
-          <div v-if="!day.lessons.length" class="empty-day">
+          <div v-if="!day.lessons.length && (!day.standaloneHomework || !day.standaloneHomework.length)" class="empty-day">
             Пар нет. Можно отдохнуть! 🙌
+          </div>
+        </div>
+      </div>
+
+      <!-- Модальное окно для деталей домашнего задания -->
+      <div v-if="selectedHomework" class="modal-overlay" @click="closeModal">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h2>📚 Домашнее задание</h2>
+            <button class="modal-close" @click="closeModal">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="detail-row">
+              <span class="detail-label">Предмет:</span>
+              <span class="detail-value">{{ selectedHomework.subjectName }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Группа:</span>
+              <span class="detail-value">{{ selectedHomework.className }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Дедлайн:</span>
+              <span class="detail-value">{{ selectedHomework.deadline }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Задание:</span>
+              <div class="detail-text">{{ selectedHomework.task }}</div>
+            </div>
+            <div v-if="selectedHomework.comment" class="detail-row">
+              <span class="detail-label">Комментарий:</span>
+              <div class="detail-text">{{ selectedHomework.comment }}</div>
+            </div>
+            <div v-if="selectedHomework.fileLink" class="detail-row">
+              <span class="detail-label">Файл:</span>
+              <a :href="selectedHomework.fileLink" target="_blank" class="detail-link">Скачать материал</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Модальное окно для деталей оценки -->
+      <div v-if="selectedGrade" class="modal-overlay" @click="closeModal">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h2>📝 Детали оценки</h2>
+            <button class="modal-close" @click="closeModal">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="detail-row">
+              <span class="detail-label">Предмет:</span>
+              <span class="detail-value">{{ selectedGrade.subjectName }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Преподаватель:</span>
+              <span class="detail-value">{{ selectedGrade.teacherName }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Оценка:</span>
+              <span class="grade-large" :class="getGradeClass(selectedGrade.gradeValue)">
+                {{ selectedGrade.gradeValue }}
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Тип:</span>
+              <span class="detail-value">{{ selectedGrade.type }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Дата:</span>
+              <span class="detail-value">{{ selectedGrade.date }}</span>
+            </div>
+            <div v-if="selectedGrade.comment" class="detail-row">
+              <span class="detail-label">Комментарий:</span>
+              <div class="detail-text">{{ selectedGrade.comment }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -76,9 +171,10 @@ const scheduleData = ref([]);
 const profileName = ref("");
 const groupName = ref("");
 const loading = ref(true);
-const currentDate = ref(new Date()); // Храним дату выбранной недели
+const currentDate = ref(new Date());
+const selectedHomework = ref(null);
+const selectedGrade = ref(null);
 
-// Проверка, является ли неделя текущей
 const isCurrentWeek = computed(() => {
   const now = new Date();
   return now.toDateString() === currentDate.value.toDateString();
@@ -105,6 +201,41 @@ const fetchData = async () => {
   }
 };
 
+const showHomeworkDetails = async (homework) => {
+  try {
+    const response = await axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Schedule/homework/${homework.id}/details`);
+    selectedHomework.value = response.data;
+  } catch (error) {
+    console.error("Ошибка загрузки деталей:", error);
+  }
+};
+
+const showGradeDetails = async (grade) => {
+  try {
+    const response = await axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Schedule/grade/${grade.id}/details`);
+    selectedGrade.value = response.data;
+  } catch (error) {
+    console.error("Ошибка загрузки деталей оценки:", error);
+  }
+};
+
+const showLessonDetails = (lesson) => {
+  // Если есть домашнее задание - показываем его
+  if (lesson.homework) {
+    showHomeworkDetails(lesson.homework);
+  }
+  // Если есть оценка - можно отобразить уведомление
+  if (lesson.grade) {
+    // Можно добавить тост-уведомление
+    console.log(`Оценка по предмету ${lesson.subjectName}: ${lesson.grade.gradeValue}`);
+  }
+};
+
+const closeModal = () => {
+  selectedHomework.value = null;
+  selectedGrade.value = null;
+};
+
 const changeWeek = (days) => {
   currentDate.value.setDate(currentDate.value.getDate() + days);
   fetchData();
@@ -115,7 +246,6 @@ const goToday = () => {
   fetchData();
 };
 
-// Логика поиска окон
 const getLessonsWithWindows = (lessons) => {
   if (!lessons || lessons.length === 0) return [];
   
@@ -139,13 +269,28 @@ const getLessonsWithWindows = (lessons) => {
 };
 
 const getStaticTime = (n) => {
-  const times = { 1: "08:30 - 10:00", 2: "10:10 - 11:40", 3: "12:10 - 13:40", 4: "13:50 - 15:20", 5: "15:30 - 17:00" };
+  const times = { 1: "08:00 - 09:30", 2: "09:40 - 11:10", 3: "11:20 - 12:50", 4: "13:45 - 15:15", 5: "15:25 - 16:55", 6: "17:05 - 18:35", 7: "18:45 - 20:15" };
   return times[n] || "00:00 - 00:00";
 };
 
 const formatDate = (dateStr) => {
   const options = { day: 'numeric', month: 'long' };
   return new Date(dateStr).toLocaleDateString('ru-RU', options);
+};
+
+const getGradeClass = (grade) => {
+  if (grade === '5') return 'grade-5';
+  if (grade === '4') return 'grade-4';
+  if (grade === '3') return 'grade-3';
+  if (grade === '2') return 'grade-2';
+  if (grade === 'Н') return 'grade-n';
+  return '';
+};
+
+const truncateText = (text, maxLength) => {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
 };
 
 onMounted(fetchData);
@@ -245,7 +390,7 @@ onMounted(fetchData);
 /* Сетка карточек */
 .schedule-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 25px;
   align-items: start;
 }
@@ -383,6 +528,308 @@ onMounted(fetchData);
   animation: spin 1s linear infinite;
   margin: 0 auto 20px;
 }
+
+
+/* Стили для оценок */
+.lesson-grade {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.grade-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+}
+
+.grade-5 { background: #E8F5E9; color: #2E7D32; }
+.grade-4 { background: #E3F2FD; color: #1565C0; }
+.grade-3 { background: #FFF3E0; color: #F57C00; }
+.grade-2 { background: #FFEBEE; color: #C62828; }
+.grade-n { background: #F3E5F5; color: #7B1FA2; }
+
+.grade-type {
+  font-size: 12px;
+  color: #707EAE;
+}
+
+/* Стили для домашнего задания */
+.lesson-homework {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #4318FF;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.homework-icon {
+  font-size: 14px;
+}
+
+.lesson-homework {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #4318FF;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #EEF2FF 0%, #E8EDFF 100%);
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.lesson-homework::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  transition: left 0.5s ease;
+}
+
+.lesson-homework:hover::before {
+  left: 100%;
+}
+
+.lesson-homework:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(67, 24, 255, 0.2);
+  background: linear-gradient(135deg, #E8EDFF 0%, #DCE4FF 100%);
+}
+
+.homework-icon {
+  font-size: 14px;
+  transition: transform 0.3s ease;
+}
+
+.lesson-homework:hover .homework-icon {
+  transform: rotate(15deg) scale(1.1);
+}
+
+.homework-text {
+  position: relative;
+}
+
+.lesson-homework:hover .homework-text::after {
+  content: '📖';
+  margin-left: 6px;
+  animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.standalone-homework {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #F0F7FF;
+  border-radius: 12px;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.standalone-homework:hover {
+  background: #E8F0FE;
+  transform: translateX(5px);
+}
+
+.homework-time {
+  font-size: 20px;
+}
+
+.homework-info {
+  flex: 1;
+}
+
+.homework-subject {
+  font-weight: 700;
+  font-size: 14px;
+  color: #2B3674;
+  margin-bottom: 4px;
+}
+
+.homework-preview {
+  font-size: 12px;
+  color: #707EAE;
+}
+
+/* Модальное окно */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 24px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #E9EDF7;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #2B3674;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #707EAE;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.modal-close:hover {
+  background: #F4F7FE;
+  color: #4318FF;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.detail-row {
+  margin-bottom: 20px;
+}
+
+.detail-label {
+  display: block;
+  font-size: 12px;
+  color: #707EAE;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.detail-value {
+  font-size: 15px;
+  color: #2B3674;
+  font-weight: 500;
+}
+
+.detail-text {
+  font-size: 14px;
+  color: #4A5568;
+  line-height: 1.5;
+  background: #F8F9FA;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.detail-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4318FF;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 0;
+  transition: all 0.3s ease;
+}
+
+.detail-link::before {
+  content: '📎';
+  margin-right: 6px;
+  font-size: 13px;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+
+.detail-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #4318FF, #764ba2);
+  transition: width 0.3s ease;
+}
+
+.detail-link:hover {
+  gap: 10px;
+  color: #764ba2;
+}
+
+.detail-link:hover::before {
+  opacity: 1;
+  transform: rotate(15deg) scale(1.1);
+}
+
+.detail-link:hover::after {
+  width: 100%;
+}
+.detail-link:hover {
+  text-decoration: underline;
+}
+
+.grade-large {
+  display: inline-block;
+  padding: 8px 24px;
+  border-radius: 40px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.lesson-item {
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.lesson-item:hover {
+  background: #FAFCFE;
+  border-radius: 12px;
+  transform: translateX(5px);
+}
+
 
 @keyframes spin { to { transform: rotate(360deg); } }
 

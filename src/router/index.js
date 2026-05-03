@@ -25,6 +25,12 @@ const routes = [
     path: '/schedule/:id',
     name: 'Schedule',
     component: () => import('../views/Schedule.vue')
+  },
+  {
+    // Добавляем этот путь
+    path: '/diary/:id',
+    name: 'ScheduDiaryle',
+    component: () => import('../views/DiaryView.vue')
   }
 ]
 

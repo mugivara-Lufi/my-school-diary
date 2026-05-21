@@ -11,21 +11,13 @@
       <nav class="main-menu">
         <router-link :to="'/schedule/' + studentId" active-class="active">Расписание</router-link>
         <router-link :to="'/performance/' + studentId" active-class="active">Успеваемость</router-link>
-        <router-link :to="'/diary/' + studentId" active-class="active">Доп. обучение</router-link>
-        <a href="#" class="dropdown-link">
-          Еще 
-          <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </a>
       </nav>
     </div>
 
     <div class="header-right" v-if="userName">
       <div class="user-block" @click.stop="toggleDropdown">
         <div class="avatar-wrapper">
-          <img src="@/assets/image/avtirization_foto.png" alt="Avatar" class="avatar" />
-          <div class="avatar-status online"></div>
+          <img src="@/assets/image/student-icon.jpg" alt="Avatar" class="avatar" />
         </div>
         <div class="user-info">
           <span class="user-name">{{ shortName }}</span>
@@ -41,7 +33,7 @@
         <div v-if="isDropdownOpen" class="dropdown-menu" @click.stop>
           <div class="dropdown-header">
             <div class="dropdown-avatar">
-              <img src="@/assets/image/avtirization_foto.png" alt="Avatar" />
+              <img src="@/assets/image/student-icon.jpg" alt="Avatar" />
             </div>
             <div class="dropdown-user-info">
               <div class="dropdown-user-name">{{ userName }}</div>
@@ -362,7 +354,7 @@ onUnmounted(() => {
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #4C6FFF;
+  border: 2px solid #ffffff;
 }
 
 .dropdown-user-info {

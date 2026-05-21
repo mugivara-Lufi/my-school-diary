@@ -10,12 +10,15 @@
       <header class="view-header">
         <div class="header-main">
           <h1 class="page-title">Успеваемость</h1>
-          <div class="quarter-selector">
-            <select v-model="selectedQuarter">
-              <option value="1">I четверть</option>
-              <option value="2">II четверть</option>
-              <option value="3">III четверть</option>
-              <option value="4">IV четверть</option>
+          <div class="filters">
+            <select v-model="selectedAcademicYear" @change="fetchData">
+              <option v-for="year in availableYears" :key="year" :value="year">
+                {{ year }} учебный год
+              </option>
+            </select>
+            <select v-model="selectedSemester" @change="fetchData">
+              <option value="1">I семестр</option>
+              <option value="2">II семестр</option>
             </select>
           </div>
         </div>
@@ -43,7 +46,15 @@
             <select v-model="sortBy">
               <option value="default">По умолчанию</option>
               <option value="grade">По высокому баллу</option>
+              <option value="attendance">По посещаемости</option>
             </select>
+          </div>
+        </div>
+
+        <div class="tool-group">
+          <div class="semester-info">
+            <span class="info-badge">{{ selectedSemester === 1 ? 'I' : 'II' }} семестр</span>
+            <span class="info-badge">{{ selectedAcademicYear }}</span>
           </div>
         </div>
       </section>
@@ -59,9 +70,10 @@
             <tr>
               <th>Предмет</th>
               <th>Текущие оценки</th>
-              <th>Пропуски</th>
+              <th>Посещаемость</th>
               <th>Средний балл</th>
               <th class="text-center">Цель</th>
+              <th>Аттестация</th>
             </tr>
           </thead>
           <tbody>
@@ -85,9 +97,12 @@
               </td>
 
               <td class="attendance-cell">
-                <span :class="{ 'has-absent': item.attendance > 0 }">
-                  {{ item.attendance || 'Нет' }}
-                </span>
+                <div class="attendance-info">
+                  <div class="attendance-bar">
+                    <div class="attendance-fill" :style="{ width: getAttendancePercent(item) + '%' }"></div>
+                  </div>
+                  <span>{{ item.attendance }}</span>
+                </div>
               </td>
 
               <td class="avg-cell">
@@ -108,9 +123,19 @@
                   {{ item.goalGrade }}
                 </div>
               </td>
+
+              <td class="attestation-cell">
+                <span class="attestation-badge" :class="item.attestationType">
+                  {{ item.attestationType === 'exam' ? 'Экзамен' : 'Зачёт' }}
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>
+
+        <div v-if="!loading && !performanceData.length" class="empty-state">
+          <p>Нет данных об успеваемости за выбранный период</p>
+        </div>
       </div>
     </div>
   </div>
@@ -121,40 +146,110 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
 import TheHeader from '../components/TheHeader.vue';
+import { API_URL } from '../router/config.js';
 
 const router = useRouter();
 const route = useRoute();
 const performanceData = ref([]);
 const profileName = ref("");
 const loading = ref(true);
-const selectedQuarter = ref("1");
+const selectedSemester = ref(1);
+const selectedAcademicYear = ref("");
+const availableYears = ref([]);
 const globalGoal = ref(5);
 const sortBy = ref("default");
 
 const openJournal = () => {
-  router.push(`/journal/${route.params.id}`);
+  router.push(`/journal/${route.params.id}?semester=${selectedSemester.value}&year=${selectedAcademicYear.value}`);
 };
+
+const getAttendancePercent = (item) => {
+  if (!item.attendance || item.attendance === "Нет данных") return 0;
+  const match = item.attendance.match(/(\d+) из (\d+)/);
+  if (match) {
+    return (parseInt(match[1]) / parseInt(match[2]) * 100);
+  }
+  return 0;
+};
+
 const fetchData = async () => {
   loading.value = true;
   const studentId = route.params.id;
+  
+  console.log("=== ОТПРАВКА ЗАПРОСА ===");
+  console.log("URL:", `${API_URL}/api/Grades/performance/${studentId}`);
+  console.log("Параметры:", {
+    semester: selectedSemester.value,
+    academicYear: selectedAcademicYear.value
+  });
+  
   try {
     const [perfResponse, profileResponse] = await Promise.all([
-      axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Grades/performance/${studentId}`),
-      axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Profile/${studentId}`)
+      axios.get(`${API_URL}/api/Grades/performance/${studentId}`, {
+        params: {
+          semester: selectedSemester.value,
+          academicYear: selectedAcademicYear.value
+        }
+      }),
+      axios.get(`${API_URL}/api/Profile/${studentId}`)
     ]);
-    performanceData.value = perfResponse.data;
-    profileName.value = profileResponse.data.student.fullName;
+    
+    console.log("=== ПОЛНЫЙ ОТВЕТ ОТ API ===");
+    console.log("Статус:", perfResponse.status);
+    console.log("Данные:", JSON.stringify(perfResponse.data, null, 2));
+    
+    // ✅ ИСПРАВЛЕНО: data (маленькая буква) вместо Data (большая)
+    if (perfResponse.data && perfResponse.data.data) {
+      console.log("✅ Нашли data.data, предметов:", perfResponse.data.data.length);
+      performanceData.value = perfResponse.data.data;
+      
+      // Устанавливаем доступные годы
+      if (perfResponse.data.availableYears) {
+        availableYears.value = perfResponse.data.availableYears;
+        console.log("Доступные годы:", availableYears.value);
+      }
+      
+      // Устанавливаем текущий семестр и год
+      if (perfResponse.data.currentSemester) {
+        selectedSemester.value = perfResponse.data.currentSemester;
+      }
+      if (perfResponse.data.currentAcademicYear && !selectedAcademicYear.value) {
+        selectedAcademicYear.value = perfResponse.data.currentAcademicYear;
+      }
+      
+    } else if (Array.isArray(perfResponse.data)) {
+      console.log("✅ Ответ - массив, длина:", perfResponse.data.length);
+      performanceData.value = perfResponse.data;
+    } else {
+      console.log("❌ Неизвестная структура ответа:", perfResponse.data);
+      performanceData.value = [];
+    }
+    
+    profileName.value = profileResponse.data.student?.fullName || "Студент";
+    console.log("Профиль:", profileName.value);
+    
   } catch (error) {
-    console.error("Ошибка при загрузке данных:", error);
+    console.error("❌ Ошибка при загрузке данных:", error);
+    if (error.response) {
+      console.error("Статус ошибки:", error.response.status);
+      console.error("Данные ошибки:", error.response.data);
+    }
+    performanceData.value = [];
   } finally {
     loading.value = false;
   }
 };
-
 const sortedPerformance = computed(() => {
   const data = [...performanceData.value];
   if (sortBy.value === 'grade') {
     return data.sort((a, b) => b.averageGrade - a.averageGrade);
+  }
+  if (sortBy.value === 'attendance') {
+    return data.sort((a, b) => {
+      const aCount = parseInt(a.attendance?.match(/\d+/) || 0);
+      const bCount = parseInt(b.attendance?.match(/\d+/) || 0);
+      return bCount - aCount;
+    });
   }
   return data;
 });
@@ -171,10 +266,90 @@ const getGradeClass = (grade) => {
   return '';
 };
 
-onMounted(fetchData);
+onMounted(() => {
+  fetchData();
+});
 </script>
-
 <style scoped>
+.filters {
+  display: flex;
+  gap: 10px;
+}
+
+.filters select {
+  background: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 10px;
+  font-weight: 500;
+  color: #2B3674;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  cursor: pointer;
+  outline: none;
+}
+
+.semester-info {
+  display: flex;
+  gap: 10px;
+}
+
+.info-badge {
+  background: #F4F7FE;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4318FF;
+}
+
+.attendance-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.attendance-bar {
+  width: 100px;
+  height: 4px;
+  background: #F4F7FE;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.attendance-fill {
+  height: 100%;
+  background: #05CD99;
+  border-radius: 4px;
+}
+
+.attestation-cell {
+  text-align: center;
+}
+
+.attestation-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.attestation-badge.exam {
+  background: #FFF7E6;
+  color: #FFB547;
+}
+
+.attestation-badge.credit {
+  background: #E6FFF5;
+  color: #05CD99;
+}
+
+.empty-state {
+  padding: 60px;
+  text-align: center;
+  color: #A3AED0;
+  font-size: 16px;
+}
+
 .page-wrapper {
   min-height: 100vh;
   background-color: #F4F7FE; /* Тот же фон, что в профиле */

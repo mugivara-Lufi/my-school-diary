@@ -165,6 +165,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import TheHeader from '../components/TheHeader.vue';
+import { API_URL } from '../router/config.js';
 
 const route = useRoute();
 const scheduleData = ref([]);
@@ -187,8 +188,8 @@ const fetchData = async () => {
   
   try {
     const [scheduleRes, profileRes] = await Promise.all([
-      axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Schedule/student/${studentId}?date=${dateStr}`),
-      axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Profile/${studentId}`)
+      axios.get(`${API_URL}/api/Schedule/student/${studentId}?date=${dateStr}`),
+      axios.get(`${API_URL}/api/Profile/${studentId}`)
     ]);
 
     scheduleData.value = scheduleRes.data;
@@ -203,7 +204,7 @@ const fetchData = async () => {
 
 const showHomeworkDetails = async (homework) => {
   try {
-    const response = await axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Schedule/homework/${homework.id}/details`);
+    const response = await axios.get(`${API_URL}/api/Schedule/homework/${homework.id}/details`);
     selectedHomework.value = response.data;
   } catch (error) {
     console.error("Ошибка загрузки деталей:", error);
@@ -212,7 +213,7 @@ const showHomeworkDetails = async (homework) => {
 
 const showGradeDetails = async (grade) => {
   try {
-    const response = await axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Schedule/grade/${grade.id}/details`);
+    const response = await axios.get(`${API_URL}/api/Schedule/grade/${grade.id}/details`);
     selectedGrade.value = response.data;
   } catch (error) {
     console.error("Ошибка загрузки деталей оценки:", error);

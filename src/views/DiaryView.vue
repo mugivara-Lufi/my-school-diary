@@ -70,6 +70,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
+import { API_URL } from '../router/config.js';
 
 const route = useRoute();
 const diaryData = ref([]);
@@ -99,7 +100,7 @@ const fetchData = async () => {
   const startDate = currentWeekStart.value.toISOString().split('T')[0];
   
   try {
-    const res = await axios.get(`https://localhost:7081/api/Diary/student/${route.params.id}`, {
+    const res = await axios.get(`${API_URL}/api/Diary/student/${route.params.id}`, {
       params: { startDate }
     });
     diaryData.value = res.data;

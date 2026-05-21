@@ -89,7 +89,7 @@ import axios from 'axios';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-
+import { API_URL } from '../router/config.js';
 const generatePDF = async () => {
     const doc = new jsPDF('l', 'mm', 'a4');
 
@@ -258,8 +258,8 @@ const fetchJournal = async () => {
 
 
         const [res, profileResponse] = await Promise.all([
-            axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Grades/journal/${studentId}`),
-            axios.get(`https://jdhfnmhb-7081.euw.devtunnels.ms/api/Profile/${studentId}`)
+            axios.get(`${API_URL}/api/Grades/journal/${studentId}`),
+            axios.get(`${API_URL}/api/Profile/${studentId}`)
         ]);
 
         journalData.value = [...res.data];
